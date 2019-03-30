@@ -3,6 +3,9 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
+
+#define LOG_ARR_SIZE 100
+
 int sys_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, int list_size) {
 
     if (pid < 0) {
@@ -33,8 +36,10 @@ int sys_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, 
     func_res = copy_from_user(sys_restrictions_list, restrictions_list, sizeof(scr) * list_size);
     if (func_res != 0) {
         kfree(sys_restrictions_list);
+        proc->hw1_list_size = -1;
         return -ENOMEM;
     }
+    proc->hw1_list_size = list_size;
 
     if (proc->hw1_restrictions_list != NULL) {
         kfree(proc->hw1_restrictions_list);
@@ -43,7 +48,25 @@ int sys_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, 
 
     proc->hw1_restrictions_list = sys_restrictions_list;
 
-    // TODO: make log array allocated and maybe delete older ver.
+    fai *log_arr = kmalloc(sizeof(fai) * LOG_ARR_SIZE, GFP_KERNEL);
+    if (log_arr == NULL) {
+        kfree(proc->hw1_restrictions_list);
+        proc->hw1_restrictions_list = NULL;
+        proc->hw1_list_size = -1;
+        return -ENOMEM;
+    }
+
+    if (proc->hw1_logs_array != NULL) {
+        kfree(proc->hw1_logs_array);
+        proc->hw1_logs_array = NULL;
+        proc->hw1_logs_array_size = -1;
+        proc->hw1_curr_log_index = -1;
+    }
+
+    proc->hw1_logs_array = log_arr;
+    proc->hw1_logs_array_size = 0;
+    proc->hw1_curr_log_index = -1;
+
     return 0; // SUCCESS
 }
 
