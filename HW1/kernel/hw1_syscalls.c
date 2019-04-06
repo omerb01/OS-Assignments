@@ -45,7 +45,7 @@ int sys_sc_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_lis
 
     proc->hw1_restrictions_list = sys_restrictions_list;
 
-    fai *log_arr = kmalloc(sizeof(fai) * LOG_ARR_SIZE, GFP_KERNEL);
+    fai *log_arr = kmalloc(sizeof(fai) * 100, GFP_KERNEL);
     if (log_arr == NULL) {
         kfree(proc->hw1_restrictions_list);
         proc->hw1_restrictions_list = NULL;

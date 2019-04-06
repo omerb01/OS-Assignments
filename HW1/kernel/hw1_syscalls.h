@@ -1,7 +1,6 @@
-#ifndef OS_ASSIGNMENTS_HW1_SYSCALLS_H
-#define OS_ASSIGNMENTS_HW1_SYSCALLS_H
-
 #include <errno.h>
+#include <stdio.h>
+#include <sys/types.h>
 
 #define LOG_ARR_SIZE 100
 
@@ -67,9 +66,3 @@ int get_process_log(pid_t pid, int size, fai *user_mem) {
     }
     return res;
 }
-
-
-
-
-
-#endif //OS_ASSIGNMENTS_HW1_SYSCALLS_H

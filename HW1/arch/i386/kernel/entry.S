@@ -203,9 +203,10 @@ ENTRY(system_call)
 	jae badsys
 	####################################### HW1 #######################################
 	pushl %eax
-    call SYMBOL_NAME(check_restrictions)
-    cmpl %esp, 0
-    jne ret_from_sys_call
+	call SYMBOL_NAME(check_restrictions)
+    cmpl $0, %eax
+    jne badsys_restrict
+    popl %eax
 	####################################### HW1 #######################################
 	call *SYMBOL_NAME(sys_call_table)(,%eax,4)
 	movl %eax,EAX(%esp)		# save the return value
@@ -251,6 +252,9 @@ tracesys_exit:
 badsys:
 	movl $-ENOSYS,EAX(%esp)
 	jmp ret_from_sys_call
+badsys_restrict:
+    popl %eax
+    jmp badsys
 
 	ALIGN
 ENTRY(ret_from_intr)
