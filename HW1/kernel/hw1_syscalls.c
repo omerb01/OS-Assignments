@@ -3,9 +3,6 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
-
-#define LOG_ARR_SIZE 100
-
 int sc_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, int list_size) {
 
     if (pid < 0) {
