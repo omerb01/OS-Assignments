@@ -5,6 +5,18 @@
 
 #define LOG_ARR_SIZE 100
 
+typedef struct sys_call_restriction {
+    int syscall_num;
+    int restriction_threshold;
+} scr;
+
+typedef struct forbidden_activity_info {
+    int syscall_num;
+    int syscall_restriction_threshold;
+    int proc_restriction_level;
+    int time;
+} fai;
+
 int sc_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, int list_size) {
     int res;
 
@@ -22,7 +34,7 @@ int sc_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, i
     return res;
 }
 
-int sys_set_proc_restriction(pid_t pid, int proc_restriction_level) {
+int set_proc_restriction(pid_t pid, int proc_restriction_level) {
     int res;
 
     __asm__(
@@ -39,7 +51,7 @@ int sys_set_proc_restriction(pid_t pid, int proc_restriction_level) {
     return res;
 }
 
-int sys_get_process_log(pid_t pid, int size, fai *user_mem) {
+int get_process_log(pid_t pid, int size, fai *user_mem) {
     int res;
 
     __asm__(

@@ -3,7 +3,7 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
-int sc_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, int list_size) {
+int sys_sc_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, int list_size) {
 
     if (pid < 0) {
         return -ESRCH;
@@ -88,7 +88,6 @@ int sys_set_proc_restriction(pid_t pid, int proc_restriction_level) {
 }
 
 int sys_get_process_log(pid_t pid, int size, fai *user_mem) {
-
     if (pid < 0) {
         return -ESRCH;
     }
@@ -112,10 +111,10 @@ int sys_get_process_log(pid_t pid, int size, fai *user_mem) {
     int i;
     for (i = 0; i < size; i++) {
 
-        if (index <= 0) {
+        if (index < 0) {
             index = 99;
         }
-
+        // We start from the last index location and go back (index is the last place we wrote);
         res_arr[size - i - 1].syscall_num                   = proc->hw1_logs_array[index].syscall_num;
         res_arr[size - i - 1].syscall_restriction_threshold = proc->hw1_logs_array[index].syscall_restriction_threshold;
         res_arr[size - i - 1].proc_restriction_level        = proc->hw1_logs_array[index].proc_restriction_level;
