@@ -29,8 +29,6 @@
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
 
-#define DEBUG 1
-
 /* The idle threads do not count.. */
 int nr_threads;
 
@@ -608,26 +606,6 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 			goto fork_out;
 	}
 
-	/************************** HW1 **************************/
-
-    if(DEBUG) {
-        p->hw1_proc_restriction_level = -1;
-        p->hw1_restrictions_list = NULL;
-        p->hw1_list_size = -1;
-        p->hw1_logs_array = NULL;
-        p->hw1_logs_array_size = -1;
-        p->hw1_curr_log_index = -1;
-
-        printk(p->hw1_proc_restriction_level);
-        printk(p->hw1_restrictions_list);
-        printk(p->hw1_list_size);
-        printk(p->hw1_logs_array);
-        printk(p->hw1_logs_array_size);
-        printk(p->hw1_curr_log_index);
-    }
-
-    /************************** HW1 **************************/
-
 	retval = -ENOMEM;
 	p = alloc_task_struct();
 	if (!p)
@@ -806,6 +784,19 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 		 * COW overhead when the child exec()s afterwards.
 		 */
 		current->need_resched = 1;
+
+
+    /************************** HW1 **************************/
+
+    p->hw1_proc_restriction_level = -1;
+    p->hw1_restrictions_list = NULL;
+    p->hw1_list_size = -1;
+    p->hw1_logs_array = NULL;
+    p->hw1_logs_array_size = -1;
+    p->hw1_curr_log_index = -1;
+
+    /************************** HW1 **************************/
+
 
 fork_out:
 	return retval;

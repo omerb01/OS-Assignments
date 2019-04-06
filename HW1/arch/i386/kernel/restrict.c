@@ -3,17 +3,18 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
-asmlinkage int check_restrictions (int pid) {
-    for (int i = 0; i < current->hw1_list_size; ++i) {
+asmlinkage int check_restrictions(int pid) {
+    int i;
+    for (i = 0; i < current->hw1_list_size; ++i) {
         if (current->hw1_restrictions_list[i].syscall_num == pid) {
 
-            if (current->hw1_restrictions_list[i].restriction >
-                currnet->hw1_proc_restriction_level) {
+            if (current->hw1_restrictions_list[i].restriction_threshold >
+                current->hw1_proc_restriction_level) {
                 // ToDo: enter to log
                 return -ENOSYS;
             }
         }
     }
 
-    return 0 ; // Success
+    return 0; // Success
 }

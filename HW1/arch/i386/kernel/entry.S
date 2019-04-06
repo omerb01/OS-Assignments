@@ -201,6 +201,12 @@ ENTRY(system_call)
 	jne tracesys
 	cmpl $(NR_syscalls),%eax
 	jae badsys
+	####################################### HW1 #######################################
+	pushl %eax
+    call SYMBOL_NAME(check_restrictions)
+    cmpl %esp, 0
+    jne ret_from_sys_call
+	####################################### HW1 #######################################
 	call *SYMBOL_NAME(sys_call_table)(,%eax,4)
 	movl %eax,EAX(%esp)		# save the return value
 ENTRY(ret_from_sys_call)
