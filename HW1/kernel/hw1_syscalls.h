@@ -22,7 +22,7 @@ int sc_restrict(pid_t pid, int proc_restriction_level, scr *restrictions_list, i
     __asm__(
     "int $0x80;"
     : "=a" (res)
-    : "0" (243) ,"b" (pid) ,"c" (proc_restriction_level), "d" (restrictions_list), "e" (list_size)
+    : "0" (243) ,"b" (pid) ,"c" (proc_restriction_level), "d" (restrictions_list), "S" (list_size)
     : "memory"
     );
 
