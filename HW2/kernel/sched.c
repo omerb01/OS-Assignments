@@ -373,10 +373,18 @@ repeat_lock_task:
 		if (old_state == TASK_UNINTERRUPTIBLE)
 			rq->nr_uninterruptible--;
 		activate_task(p, rq);
+
 		/*
 		 * If sync is set, a resched_task() is a NOOP
 		 */
-		if (p->prio < rq->curr->prio)
+
+		//HW2
+		if (p->policy == SCHED_SHORT) {
+			if (p->hw2_sched_short_prio < rq->curr->hw2_sched_short_prio){
+				resched_task(rq->curr);
+			}
+		}
+		else if (p->prio < rq->curr->prio)
 			resched_task(rq->curr);
 		success = 1;
 	}
@@ -739,7 +747,7 @@ void scheduler_tick(int user_tick, int system)
 	kstat.per_cpu_system[cpu] += system;
 
 	/* Task might have expired already, but not scheduled off yet */
-	if (p->array != rq->active) {
+	if (p->array != rq->active && p->array != rq->shorts) { //HW2
 		set_tsk_need_resched(p);
 		return;
 	}
@@ -783,7 +791,32 @@ void scheduler_tick(int user_tick, int system)
 			enqueue_task(p, rq->expired);
 		} else
 			enqueue_task(p, rq->active);
-	}
+	}else {
+        ///////////////////////////////// HW2 /////////////////////////////////
+        if (p->policy == SCHED_SHORT) {
+            if (!--p->hw2_remaining_time) {
+                dequeue_task(p, rq->shorts);
+                set_tsk_need_resched(p);
+
+                p->policy = SCHED_OTHER;
+                if (p->static_prio + 7 >= MAX_PRIO - 1) {
+                    p->static_prio = MAX_PRIO - 1;
+                }
+                else {
+                    p->static_prio = p->static_prio + 7;
+                }
+
+                p->sleep_avg = 0.5*MAX_SLEEP_AVG;
+
+                p->prio = effective_prio(p);
+                p->time_slice = TASK_TIMESLICE(p);
+
+                enqueue_task(p, rq->active);
+            }
+        }
+        ///////////////////////////////// HW2 /////////////////////////////////
+
+    }
 out:
 #if CONFIG_SMP
 	if (!(jiffies % BUSY_REBALANCE_TICK))
@@ -801,9 +834,9 @@ asmlinkage void schedule(void)
 {
 	task_t *prev, *next;
 	runqueue_t *rq;
-	prio_array_t *array;
+	prio_array_t *array, *shorts_array;
 	list_t *queue;
-	int idx;
+	int idx, shorts_idx;
 
 	if (unlikely(in_interrupt()))
 		BUG();
@@ -842,8 +875,9 @@ pick_next_task:
 		goto switch_tasks;
 	}
 
-	array = rq->active;
-	if (unlikely(!array->nr_active)) {
+	array        = rq->active;
+	shorts_array = rq->shorts;
+	if (unlikely(!array->nr_active && !shorts_array->nr_active)) { // HW2
 		/*
 		 * Switch the active and expired arrays.
 		 */
@@ -853,9 +887,26 @@ pick_next_task:
 		rq->expired_timestamp = 0;
 	}
 
-	idx = sched_find_first_bit(array->bitmap);
-	queue = array->queue + idx;
-	next = list_entry(queue->next, task_t, run_list);
+//	idx = sched_find_first_bit(array->bitmap);
+//
+//	if (idx <= 99 || (idx >= 100 && idx <= 139 && shorts_array->nr_active == 0)) {
+//        queue = array->queue + idx;
+//	} else {
+//        shorts_idx = sched_find_first_bit(shorts_array->bitmap);
+//        queue = shorts_array->queue + shorts_idx;
+//    }
+//    next = list_entry(queue->next, task_t, run_list);
+
+/////////////////////////////////////////
+    if (array->nr_active == 0){
+        shorts_idx = sched_find_first_bit(shorts_array->bitmap);
+        queue = shorts_array->queue + shorts_idx;
+    } else {
+        idx = sched_find_first_bit(array->bitmap);
+        queue = array->queue + idx;
+    }
+    next = list_entry(queue->next, task_t, run_list);
+///////////////////////////////
 
 switch_tasks:
 	prefetch(next);
