@@ -565,6 +565,7 @@ extern struct exec_domain	default_exec_domain;
     journal_info:	NULL,						\
     hw2_remaining_time:        -1,                  \
     hw2_sched_short_prio:      -1,                \
+    hw2_requested_time:        -1,                \
 }
 
 

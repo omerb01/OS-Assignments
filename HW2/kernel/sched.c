@@ -1134,6 +1134,11 @@ asmlinkage long sys_nice(int increment)
 	 *	We don't have to worry. Conceptually one call occurs first
 	 *	and we have a single winner.
 	 */
+
+	if (current->policy == SCHED_SHORT) { // HW2
+	    return -EPREM;
+	}
+
 	if (increment < 0) {
 		if (!capable(CAP_SYS_NICE))
 			return -EPERM;
@@ -1218,7 +1223,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	else {
 		retval = -EINVAL;
 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
-				policy != SCHED_OTHER)
+				policy != SCHED_OTHER && policy != SCHED_SHORT) //HW2
 			goto out_unlock;
 	}
 
@@ -1227,6 +1232,9 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	 * 1..MAX_USER_RT_PRIO-1, valid priority for SCHED_OTHER is 0.
 	 */
 	retval = -EINVAL;
+    if (lp.sched_short_prio < 0 || lp.sched_short_prio > MAX_USER_RT_PRIO-1
+        || lp.requested_time < 1 || lp.requested_time > 3000) // HW2
+        goto out_unlock;
 	if (lp.sched_priority < 0 || lp.sched_priority > MAX_USER_RT_PRIO-1)
 		goto out_unlock;
 	if ((policy == SCHED_OTHER) != (lp.sched_priority == 0))
@@ -1240,13 +1248,24 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	    !capable(CAP_SYS_NICE))
 		goto out_unlock;
 
-	array = p->array;
+    if (p->policy == SCHED_SHORT) { // HW2
+        goto out_unlock;
+    }
+
+    array = p->array;
 	if (array)
 		deactivate_task(p, task_rq(p));
 	retval = 0;
 	p->policy = policy;
 	p->rt_priority = lp.sched_priority;
-	if (policy != SCHED_OTHER)
+
+    if (policy == SCHED_SHORT) {
+        p->hw2_remaining_time = lp.requested_time;
+        p->hw2_sched_short_prio = lp.sched_short_prio;
+        p->hw2_requested_time = lp.requested_time;
+    }
+
+    if (policy != SCHED_OTHER && policy != SCHED_SHORT)
 		p->prio = MAX_USER_RT_PRIO-1 - p->rt_priority;
 	else
 		p->prio = p->static_prio;
@@ -1306,7 +1325,9 @@ asmlinkage long sys_sched_getparam(pid_t pid, struct sched_param *param)
 	retval = -ESRCH;
 	if (!p)
 		goto out_unlock;
-	lp.sched_priority = p->rt_priority;
+	lp.sched_priority = p->rt_priority; // HW2
+	lp.requested_time = p->hw2_requested_time;
+	lp.sched_short_prio = p->hw2_sched_short_prio;
 	read_unlock(&tasklist_lock);
 
 	/*
@@ -1426,7 +1447,13 @@ asmlinkage long sys_sched_yield(void)
 	prio_array_t *array = current->array;
 	int i;
 
-	if (unlikely(rt_task(current))) {
+	if (current->policy == SCHED_SHORT) { // HW2
+        list_del(&current->run_list);
+        list_add_tail(&current->run_list, array->queue + current->hw2_sched_short_prio);
+        goto out_unlock;
+    }
+
+	if (unlikely(rt_task(current)) {
 		list_del(&current->run_list);
 		list_add_tail(&current->run_list, array->queue + current->prio);
 		goto out_unlock;
@@ -1961,29 +1988,62 @@ int ll_copy_from_user(void *to, const void *from_user, unsigned long len)
 struct low_latency_enable_struct __enable_lowlatency = { 0, };
 #endif
 
+#endif	/* LOWLATENCY_NEEDED */
+
 /************************************ HW2 ************************************/
 
 
 int sys_is_short ( pid_t pid) {
+    task_t *proc = find_task_by_pid(pid);
+    if (proc == NULL) {
+        return -ESRCH;
+    }
+    return proc->policy == SCHED_SHORT;
+}
 
+int sys_short_remaining_time(pid_t pid) {
     task_t *proc = find_task_by_pid(pid);
     if (proc == NULL) {
         return -ESRCH;
     }
 
-    return proc->policy == SCHED_SHORT;
+    if (proc->policy != SCHED_SHORT){
+        return -EINVAL;
+    }
 
+    return proc->hw2_remaining_time;
 }
 
-int sys_short_remaining_time(pid_t pid) {
+int short_place_in_queue(pid_t pid){
+    task_t *proc = find_task_by_pid(pid);
+	struct list_head *node;
+    task_t *temp;
+    list_t *q;
+    int i;
+    int counter = 0;
 
-}
+    if (proc == NULL) {
+        return -ESRCH;
+    }
 
-int sys_short_remaining_time(pid_t pid){
+    if (proc->policy != SCHED_SHORT){
+        return -EINVAL;
+    }
 
+    q = proc->array->queue;
+    for (i = 0; i <= proc->hw2_sched_short_prio; i++) {
+        if (q[i] != NULL) {
+        	list_for_each(node, &(q[i])){
+				temp = list_entry(node, task_t, run_list);
+				if(node->pid == pid) {
+					break;
+				}
+				counter++;
+			}
+		}
+    }
+
+    return counter;
 }
 
 /************************************ HW2 ************************************/
-
-#endif	/* LOWLATENCY_NEEDED */
-
