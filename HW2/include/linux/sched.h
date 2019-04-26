@@ -361,7 +361,6 @@ struct task_struct {
 
 	struct mm_struct *mm, *active_mm;
 
-
 /* task state */
 	struct linux_binfmt *binfmt;
 	int exit_code, exit_signal;
@@ -458,6 +457,12 @@ struct task_struct {
 
 /* journalling filesystem info */
 	void *journal_info;
+
+	////////////////////// HW2 ///////////////////////////////
+	unsigned int hw2_remaining_time;
+    unsigned int hw2_sched_short_prio;
+    unsigned int hw2_requested_time;
+    ////////////////////// HW2 ///////////////////////////////
 };
 
 /*
