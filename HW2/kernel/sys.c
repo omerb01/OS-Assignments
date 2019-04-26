@@ -201,7 +201,7 @@ asmlinkage long sys_setpriority(int which, int who, int niceval)
 	int error;
 
 	if (current->policy == SCHED_SHORT) { // HW2
-		return -EPREM;
+		return -EPERM;
 	}
 
 	if (which > 2 || which < 0)

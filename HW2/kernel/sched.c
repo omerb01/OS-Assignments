@@ -150,7 +150,8 @@ static struct runqueue runqueues[NR_CPUS] __cacheline_aligned;
 #define this_rq()		cpu_rq(smp_processor_id())
 #define task_rq(p)		cpu_rq((p)->cpu)
 #define cpu_curr(cpu)		(cpu_rq(cpu)->curr)
-#define rt_task(p)		(((p)->prio < MAX_RT_PRIO)&&(p->policy != SCHED_SHORT)) // HW2
+#define rt_task(p)		(((p)->prio < MAX_RT_PRIO)&&(p->policy != SCHED_SHORT))
+// HW2
 
 /*
  * Default context-switch locking:
@@ -1136,7 +1137,7 @@ asmlinkage long sys_nice(int increment)
 	 */
 
 	if (current->policy == SCHED_SHORT) { // HW2
-	    return -EPREM;
+	    return -EPERM;
 	}
 
 	if (increment < 0) {
@@ -1453,7 +1454,7 @@ asmlinkage long sys_sched_yield(void)
         goto out_unlock;
     }
 
-	if (unlikely(rt_task(current)) {
+	if (unlikely(rt_task(current))) {
 		list_del(&current->run_list);
 		list_add_tail(&current->run_list, array->queue + current->prio);
 		goto out_unlock;
@@ -2014,7 +2015,7 @@ int sys_short_remaining_time(pid_t pid) {
     return proc->hw2_remaining_time;
 }
 
-int short_place_in_queue(pid_t pid){
+int sys_short_place_in_queue(pid_t pid){
     task_t *proc = find_task_by_pid(pid);
 	struct list_head *node;
     task_t *p;
