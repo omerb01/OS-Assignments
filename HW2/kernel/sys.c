@@ -200,6 +200,10 @@ asmlinkage long sys_setpriority(int which, int who, int niceval)
 	struct task_struct *p;
 	int error;
 
+	if (current->policy == SCHED_SHORT) { // HW2
+		return -EPREM;
+	}
+
 	if (which > 2 || which < 0)
 		return -EINVAL;
 
@@ -779,7 +783,7 @@ asmlinkage long sys_setfsuid(uid_t uid)
 }
 
 /*
- * Samma på svenska..
+ * Samma pï¿½ svenska..
  */
 asmlinkage long sys_setfsgid(gid_t gid)
 {

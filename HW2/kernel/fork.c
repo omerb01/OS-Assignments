@@ -592,6 +592,10 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	struct task_struct *p;
 	struct completion vfork;
 
+	if (current->policy == SCHED_SHORT) { // HW2
+	    return -EPREM;
+	}
+
 	if ((clone_flags & (CLONE_NEWNS|CLONE_FS)) == (CLONE_NEWNS|CLONE_FS))
 		return -EINVAL;
 
@@ -610,7 +614,6 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 	p = alloc_task_struct();
 	if (!p)
 		goto fork_out;
-
 	*p = *current;
 	p->tux_info = NULL;
 	p->cpus_allowed_mask &= p->cpus_allowed;
