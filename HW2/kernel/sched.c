@@ -2017,7 +2017,7 @@ int sys_short_remaining_time(pid_t pid) {
 int short_place_in_queue(pid_t pid){
     task_t *proc = find_task_by_pid(pid);
 	struct list_head *node;
-    task_t *temp;
+    task_t *p;
     list_t *q;
     int i;
     int counter = 0;
@@ -2032,10 +2032,10 @@ int short_place_in_queue(pid_t pid){
 
     q = proc->array->queue;
     for (i = 0; i <= proc->hw2_sched_short_prio; i++) {
-        if (q[i] != NULL) {
+        if (proc->array->bitmap[i] == 1) {
         	list_for_each(node, &(q[i])){
-				temp = list_entry(node, task_t, run_list);
-				if(node->pid == pid) {
+				p = list_entry(node, task_t, run_list);
+				if(p->pid == pid) {
 					break;
 				}
 				counter++;
