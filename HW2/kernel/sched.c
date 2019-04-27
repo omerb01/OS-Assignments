@@ -386,14 +386,15 @@ repeat_lock_task:
 		 * If sync is set, a resched_task() is a NOOP
 		 */
 
-		if (p->prio < rq->curr->prio)
-			resched_task(rq->curr);
+		if (p->policy == SCHED_SHORT || rq->curr->policy == SCHED_SHORT) // HW2
+            resched_task(rq->curr);
+		else if (p->prio < rq->curr->prio)
+            resched_task(rq->curr);
+
 		success = 1;
 	}
 	p->state = TASK_RUNNING;
 	task_rq_unlock(rq, &flags);
-
-	if (p->policy == SCHED_SHORT && success == 1) schedule();
 
 	return success;
 }
@@ -437,9 +438,11 @@ void sched_exit(task_t * p)
 {
 	__cli();
 	if (p->first_time_slice) {
-		current->time_slice += p->time_slice;
-		if (unlikely(current->time_slice > MAX_TIMESLICE))
-			current->time_slice = MAX_TIMESLICE;
+	    if(p->policy != SCHED_SHORT) { // HW2
+            current->time_slice += p->time_slice;
+            if (unlikely(current->time_slice > MAX_TIMESLICE))
+                current->time_slice = MAX_TIMESLICE;
+        }
 	}
 	__sti();
 	/*
@@ -886,6 +889,8 @@ pick_next_task:
 		rq->expired_timestamp = 0;
 	}
 
+///////////////////////////////////////// HW2
+
 	idx = sched_find_first_bit(array->bitmap);
 
 	if (idx <= 99 || (idx >= 100 && idx <= 139 && shorts_array->nr_active == 0)) {
@@ -896,15 +901,6 @@ pick_next_task:
     }
     next = list_entry(queue->next, task_t, run_list);
 
-///////////////////////////////////////// HW2
-//    if (array->nr_active == 0){
-//        shorts_idx = sched_find_first_bit(shorts_array->bitmap);
-//        queue = shorts_array->queue + shorts_idx;
-//    } else {
-//        idx = sched_find_first_bit(array->bitmap);
-//        queue = array->queue + idx;
-//    }
-//    next = list_entry(queue->next, task_t, run_list);
 ///////////////////////////////
 
 switch_tasks:
@@ -1277,7 +1273,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	if (policy == SCHED_SHORT) {
         if (shorts_array) {
             activate_task(p, task_rq(p));
-            schedule();
+            resched_task(rq->curr);
         }
     }
 	else {
