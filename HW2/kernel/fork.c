@@ -788,6 +788,9 @@ int do_fork(unsigned long clone_flags, unsigned long stack_start,
 		 */
 		current->need_resched = 1;
 
+	p->hw2_remaining_time = -1;
+	p->hw2_requested_time = -1;
+
 fork_out:
 	return retval;
 

@@ -200,10 +200,6 @@ asmlinkage long sys_setpriority(int which, int who, int niceval)
 	struct task_struct *p;
 	int error;
 
-	if (current->policy == SCHED_SHORT) { // HW2
-		return -EPERM;
-	}
-
 	if (which > 2 || which < 0)
 		return -EINVAL;
 
@@ -218,6 +214,10 @@ asmlinkage long sys_setpriority(int which, int who, int niceval)
 	for_each_task(p) {
 		if (!proc_sel(p, which, who))
 			continue;
+        if (p->policy == SCHED_SHORT) { // HW2
+            error = -EPERM;
+            continue;
+        }
 		if (p->uid != current->euid &&
 			p->uid != current->uid && !capable(CAP_SYS_NICE)) {
 			error = -EPERM;

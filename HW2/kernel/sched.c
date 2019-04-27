@@ -256,9 +256,16 @@ static inline int effective_prio(task_t *p)
 static inline void activate_task(task_t *p, runqueue_t *rq)
 {
 	unsigned long sleep_time = jiffies - p->sleep_timestamp;
-	prio_array_t *array = rq->active;
+	prio_array_t *array;
 
-	if (!rt_task(p) && sleep_time) {
+	// HW2
+	if (p->policy == SCHED_SHORT)
+	    array = rq->shorts;
+	else
+        array = rq->active;
+
+	// HW2
+	if (!rt_task(p) && sleep_time && p->policy != SCHED_SHORT) {
 		/*
 		 * This code gives a bonus to interactive tasks. We update
 		 * an 'average sleep time' value here, based on
@@ -379,13 +386,7 @@ repeat_lock_task:
 		 * If sync is set, a resched_task() is a NOOP
 		 */
 
-		//HW2
-		if (p->policy == SCHED_SHORT) {
-			if (p->hw2_sched_short_prio < rq->curr->hw2_sched_short_prio){
-				resched_task(rq->curr);
-			}
-		}
-		else if (p->prio < rq->curr->prio)
+		if (p->prio < rq->curr->prio)
 			resched_task(rq->curr);
 		success = 1;
 	}
@@ -782,7 +783,7 @@ void scheduler_tick(int user_tick, int system)
 	if (!--p->time_slice) {
 		dequeue_task(p, rq->active);
 		set_tsk_need_resched(p);
-		p->prio = effective_prio(p);
+		if (p->policy != SCHED_SHORT) p->prio = effective_prio(p); // HW2
 		p->first_time_slice = 0;
 		p->time_slice = TASK_TIMESLICE(p);
 
@@ -888,25 +889,25 @@ pick_next_task:
 		rq->expired_timestamp = 0;
 	}
 
-//	idx = sched_find_first_bit(array->bitmap);
-//
-//	if (idx <= 99 || (idx >= 100 && idx <= 139 && shorts_array->nr_active == 0)) {
-//        queue = array->queue + idx;
-//	} else {
-//        shorts_idx = sched_find_first_bit(shorts_array->bitmap);
-//        queue = shorts_array->queue + shorts_idx;
-//    }
-//    next = list_entry(queue->next, task_t, run_list);
+	idx = sched_find_first_bit(array->bitmap);
 
-/////////////////////////////////////////
-    if (array->nr_active == 0){
+	if (idx <= 99 || (idx >= 100 && idx <= 139 && shorts_array->nr_active == 0)) {
+        queue = array->queue + idx;
+	} else {
         shorts_idx = sched_find_first_bit(shorts_array->bitmap);
         queue = shorts_array->queue + shorts_idx;
-    } else {
-        idx = sched_find_first_bit(array->bitmap);
-        queue = array->queue + idx;
     }
     next = list_entry(queue->next, task_t, run_list);
+
+///////////////////////////////////////// HW2
+//    if (array->nr_active == 0){
+//        shorts_idx = sched_find_first_bit(shorts_array->bitmap);
+//        queue = shorts_array->queue + shorts_idx;
+//    } else {
+//        idx = sched_find_first_bit(array->bitmap);
+//        queue = array->queue + idx;
+//    }
+//    next = list_entry(queue->next, task_t, run_list);
 ///////////////////////////////
 
 switch_tasks:
@@ -1191,6 +1192,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	struct sched_param lp;
 	int retval = -EINVAL;
 	prio_array_t *array;
+    prio_array_t *shorts_array;
 	unsigned long flags;
 	runqueue_t *rq;
 	task_t *p;
@@ -1233,13 +1235,15 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	 * 1..MAX_USER_RT_PRIO-1, valid priority for SCHED_OTHER is 0.
 	 */
 	retval = -EINVAL;
-    if (lp.sched_short_prio < 0 || lp.sched_short_prio > MAX_USER_RT_PRIO-1
+    if (lp.sched_short_prio < 0 || lp.sched_short_prio > MAX_PRIO-1
         || lp.requested_time < 1 || lp.requested_time > 3000) // HW2
         goto out_unlock;
-	if (lp.sched_priority < 0 || lp.sched_priority > MAX_USER_RT_PRIO-1)
-		goto out_unlock;
-	if ((policy == SCHED_OTHER) != (lp.sched_priority == 0))
-		goto out_unlock;
+    if (policy != SCHED_SHORT) { //HW2
+        if (lp.sched_priority < 0 || lp.sched_priority > MAX_USER_RT_PRIO-1)
+            goto out_unlock;
+        if ((policy == SCHED_OTHER) != (lp.sched_priority == 0))
+            goto out_unlock;
+    }
 
 	retval = -EPERM;
 	if ((policy == SCHED_FIFO || policy == SCHED_RR) &&
@@ -1254,6 +1258,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
     }
 
     array = p->array;
+    shorts_array = rq->shorts;
 	if (array)
 		deactivate_task(p, task_rq(p));
 	retval = 0;
@@ -1262,16 +1267,24 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 
     if (policy == SCHED_SHORT) {
         p->hw2_remaining_time = lp.requested_time;
-        p->hw2_sched_short_prio = lp.sched_short_prio;
+        p->prio = lp.sched_short_prio;
         p->hw2_requested_time = lp.requested_time;
     }
+    else {
+        if (policy != SCHED_OTHER && policy != SCHED_SHORT)
+            p->prio = MAX_USER_RT_PRIO-1 - p->rt_priority;
+        else
+            p->prio = p->static_prio;
+    }
 
-    if (policy != SCHED_OTHER && policy != SCHED_SHORT)
-		p->prio = MAX_USER_RT_PRIO-1 - p->rt_priority;
-	else
-		p->prio = p->static_prio;
-	if (array)
-		activate_task(p, task_rq(p));
+	if (policy == SCHED_SHORT) {
+        if (shorts_array)
+            activate_task(p, task_rq(p));
+    }
+	else {
+        if (array)
+            activate_task(p, task_rq(p));
+	}
 
 out_unlock:
 	task_rq_unlock(rq, &flags);
@@ -1328,7 +1341,7 @@ asmlinkage long sys_sched_getparam(pid_t pid, struct sched_param *param)
 		goto out_unlock;
 	lp.sched_priority = p->rt_priority; // HW2
 	lp.requested_time = p->hw2_requested_time;
-	lp.sched_short_prio = p->hw2_sched_short_prio;
+	lp.sched_short_prio = p->prio;
 	read_unlock(&tasklist_lock);
 
 	/*
@@ -1447,12 +1460,6 @@ asmlinkage long sys_sched_yield(void)
 	runqueue_t *rq = this_rq_lock();
 	prio_array_t *array = current->array;
 	int i;
-
-	if (current->policy == SCHED_SHORT) { // HW2
-        list_del(&current->run_list);
-        list_add_tail(&current->run_list, array->queue + current->hw2_sched_short_prio);
-        goto out_unlock;
-    }
 
 	if (unlikely(rt_task(current))) {
 		list_del(&current->run_list);
@@ -2032,7 +2039,7 @@ int sys_short_place_in_queue(pid_t pid){
     }
 
     q = proc->array->queue;
-    for (i = 0; i <= proc->hw2_sched_short_prio; i++) {
+    for (i = 0; i <= proc->prio; i++) {
         if (proc->array->bitmap[i] == 1) {
         	list_for_each(node, &(q[i])){
 				p = list_entry(node, task_t, run_list);

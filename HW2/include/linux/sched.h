@@ -459,9 +459,8 @@ struct task_struct {
 	void *journal_info;
 
 	////////////////////// HW2 ///////////////////////////////
-	unsigned int hw2_remaining_time;
-    unsigned int hw2_sched_short_prio;
-    unsigned int hw2_requested_time;
+	int hw2_remaining_time;
+	int hw2_requested_time;
     ////////////////////// HW2 ///////////////////////////////
 };
 
@@ -569,7 +568,6 @@ extern struct exec_domain	default_exec_domain;
     alloc_lock:		SPIN_LOCK_UNLOCKED,				\
     journal_info:	NULL,						\
     hw2_remaining_time:        -1,                  \
-    hw2_sched_short_prio:      -1,                \
     hw2_requested_time:        -1,                \
 }
 

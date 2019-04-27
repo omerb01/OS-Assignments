@@ -1,6 +1,7 @@
 
 #include <errno.h>
 #include <termios.h>
+#include <sys/types.h>
 
 #ifndef HW2_SYSCALLS_H_
 #define HW2_SYSCALLS_H_
@@ -64,7 +65,7 @@ int short_place_in_queue(pid_t pid){
 		res = -1;
 	 }
  return (int) res;
- 
+
 }
 
 #endif 
