@@ -393,6 +393,8 @@ repeat_lock_task:
 	p->state = TASK_RUNNING;
 	task_rq_unlock(rq, &flags);
 
+	if (p->policy == SCHED_SHORT && success == 1) schedule();
+
 	return success;
 }
 
@@ -781,44 +783,39 @@ void scheduler_tick(int user_tick, int system)
 	if (p->sleep_avg)
 		p->sleep_avg--;
 	if (!--p->time_slice) {
-		dequeue_task(p, rq->active);
-		set_tsk_need_resched(p);
-		if (p->policy != SCHED_SHORT) p->prio = effective_prio(p); // HW2
-		p->first_time_slice = 0;
-		p->time_slice = TASK_TIMESLICE(p);
+        if (p->policy == SCHED_SHORT) { // HW2
+            dequeue_task(p, rq->shorts);
+            set_tsk_need_resched(p);
 
-		if (!TASK_INTERACTIVE(p) || EXPIRED_STARVING(rq)) {
-			if (!rq->expired_timestamp)
-				rq->expired_timestamp = jiffies;
-			enqueue_task(p, rq->expired);
-		} else
-			enqueue_task(p, rq->active);
-	}else {
-        ///////////////////////////////// HW2 /////////////////////////////////
-        if (p->policy == SCHED_SHORT) {
-            if (!--p->hw2_remaining_time) {
-                dequeue_task(p, rq->shorts);
-                set_tsk_need_resched(p);
-
-                p->policy = SCHED_OTHER;
-                if (p->static_prio + 7 >= MAX_PRIO - 1) {
-                    p->static_prio = MAX_PRIO - 1;
-                }
-                else {
-                    p->static_prio = p->static_prio + 7;
-                }
-
-                p->sleep_avg = 0.5*MAX_SLEEP_AVG;
-
-                p->prio = effective_prio(p);
-                p->time_slice = TASK_TIMESLICE(p);
-
-                enqueue_task(p, rq->active);
+            p->policy = SCHED_OTHER;
+            if (p->static_prio + 7 >= MAX_PRIO - 1) {
+                p->static_prio = MAX_PRIO - 1;
             }
-        }
-        ///////////////////////////////// HW2 /////////////////////////////////
+            else {
+                p->static_prio = p->static_prio + 7;
+            }
 
-    }
+            p->sleep_avg = 0.5*MAX_SLEEP_AVG;
+            p->prio = effective_prio(p);
+            p->time_slice = TASK_TIMESLICE(p);
+
+            enqueue_task(p, rq->active);
+        }
+        else {
+            dequeue_task(p, rq->active);
+            set_tsk_need_resched(p);
+            p->prio = effective_prio(p);
+            p->first_time_slice = 0;
+            p->time_slice = TASK_TIMESLICE(p);
+
+            if (!TASK_INTERACTIVE(p) || EXPIRED_STARVING(rq)) {
+                if (!rq->expired_timestamp)
+                    rq->expired_timestamp = jiffies;
+                enqueue_task(p, rq->expired);
+            } else
+                enqueue_task(p, rq->active);
+        }
+	}
 out:
 #if CONFIG_SMP
 	if (!(jiffies % BUSY_REBALANCE_TICK))
@@ -1266,7 +1263,7 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
 	p->rt_priority = lp.sched_priority;
 
     if (policy == SCHED_SHORT) {
-        p->hw2_remaining_time = lp.requested_time;
+        p->time_slice = lp.requested_time;
         p->prio = lp.sched_short_prio;
         p->hw2_requested_time = lp.requested_time;
     }
@@ -1278,8 +1275,10 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
     }
 
 	if (policy == SCHED_SHORT) {
-        if (shorts_array)
+        if (shorts_array) {
             activate_task(p, task_rq(p));
+            schedule();
+        }
     }
 	else {
         if (array)
@@ -2019,7 +2018,7 @@ int sys_short_remaining_time(pid_t pid) {
         return -EINVAL;
     }
 
-    return proc->hw2_remaining_time;
+    return proc->time_slice;
 }
 
 int sys_short_place_in_queue(pid_t pid){
@@ -2040,15 +2039,13 @@ int sys_short_place_in_queue(pid_t pid){
 
     q = proc->array->queue;
     for (i = 0; i <= proc->prio; i++) {
-        if (proc->array->bitmap[i] == 1) {
-        	list_for_each(node, &(q[i])){
-				p = list_entry(node, task_t, run_list);
-				if(p->pid == pid) {
-					break;
-				}
-				counter++;
-			}
-		}
+        list_for_each(node, &(q[i])){
+            p = list_entry(node, task_t, run_list);
+            if(p->pid == pid) {
+                break;
+            }
+            counter++;
+        }
     }
 
     return counter;
