@@ -1236,8 +1236,6 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
             goto out_unlock;
         if ((policy == SCHED_OTHER) != (lp.sched_priority == 0))
             goto out_unlock;
-    } else if (p->policy == SCHED_RR || p->policy == SCHED_FIFO) {//SCHED_SHORT
-        goto out_unlock;
     }
 
 
@@ -1252,6 +1250,11 @@ static int setscheduler(pid_t pid, int policy, struct sched_param *param)
     if (p->policy == SCHED_SHORT) { // HW2
         goto out_unlock;
     }
+
+	if ((policy == SCHED_SHORT) &&
+			(p->policy == SCHED_RR || p->policy == SCHED_FIFO)) { // HW2
+		goto out_unlock;
+	}
 
     array = p->array;
     shorts_array = rq->shorts;
