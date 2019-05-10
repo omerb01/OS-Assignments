@@ -2047,9 +2047,10 @@ int sys_short_place_in_queue(pid_t pid){
         return -EINVAL;
     }
 
-    q = proc->array->queue;
+    q = this_rq()->shorts->queue;
     for (i = 0; i <= proc->prio; i++) {
-        list_for_each(node, &(q[i])){
+        if (list_empty(q + i)) continue;
+        list_for_each(node, q + i) {
             p = list_entry(node, task_t, run_list);
             if(p->pid == pid) {
                 break;
