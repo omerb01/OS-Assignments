@@ -211,31 +211,20 @@ static inline void rq_unlock(runqueue_t *rq)
 /*
  * Adding/removing a task to/from a priority array:
  */
-static inline void dequeue_task(struct task_struct *p, prio_array_t *array) {
-	array->nr_active--;
-	list_del(&p->run_list);
-	if (p->policy == SCHED_SHORT) { // HW2
-		if (list_empty(array->queue + p->sched_short_prio))
-			__clear_bit(p->sched_short_prio, array->bitmap);
-	} else {
-		if (list_empty(array->queue + p->prio))
-			__clear_bit(p->prio, array->bitmap);
-	}
+static inline void dequeue_task(struct task_struct *p, prio_array_t *array)
+{
+    array->nr_active--;
+    list_del(&p->run_list);
+    if (list_empty(array->queue + p->prio))
+        __clear_bit(p->prio, array->bitmap);
 }
 
 static inline void enqueue_task(struct task_struct *p, prio_array_t *array)
 {
-	if (p->policy == SCHED_SHORT) {
-        list_add_tail(&p->run_list, array->queue + p->sched_short_prio);
-        __set_bit(p->sched_short_prio, array->bitmap);
-        array->nr_active++;
-        p->array = array;
-	} else {
-		list_add_tail(&p->run_list, array->queue + p->prio);
-		__set_bit(p->prio, array->bitmap);
-		array->nr_active++;
-		p->array = array;
-	}
+    list_add_tail(&p->run_list, array->queue + p->prio);
+    __set_bit(p->prio, array->bitmap);
+    array->nr_active++;
+    p->array = array;
 }
 
 static inline int effective_prio(task_t *p)
@@ -1482,7 +1471,7 @@ asmlinkage long sys_sched_yield(void)
     ///////////////////////////// HW2 /////////////////////////////
 	if (current->policy == SCHED_SHORT){
 	    list_del(&current->run_list);
-        list_add_tail(&current->run_list, array->queue + current->sched_short_prio);
+        list_add_tail(&current->run_list, array->queue + current->prio);
 	    goto out_unlock;
 	}
     ///////////////////////////// HW2 /////////////////////////////
